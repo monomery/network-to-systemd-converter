@@ -9,9 +9,9 @@ import re
 import os
 
 
-wdir='/'
-wdir_systemd=''
-htb_init_dir = ''
+wdir="/mnt/c/Users/Mon/Documents/Python Scripts/puma-converter/network-scripts/"
+wdir_systemd="/mnt/c/Users/Mon/Documents/Python Scripts/puma-converter/systemd/"
+htb_init_dir = "/mnt/c/Users/Mon/Documents/Python Scripts/puma-converter/network-scripts/htb.init"
 raw_files = os.listdir(path=wdir)
 
 interface = ''
@@ -24,8 +24,9 @@ list2 = []
 ip_list = []
 route_list = []
 speed_list = []
+ip_link = []
 # htb_script = []
-
+multiplier = 1.06
 def search_speed():
     raw_tc_list = []
     raw_speed_list = []
@@ -48,12 +49,17 @@ def search_speed():
         temp_list.append(interface)
         temp_list.append(speed)
         speed_list.append(list(temp_list))  
-        htb_script.append(f'''tc qdisc add dev {interface} handle ffff: ingress
+        htb_script.append(f"""tc qdisc add dev {interface} root cake bandwidth {speed}
+tc qdisc add dev {interface} handle ffff: ingress
 tc filter add dev {interface} parent ffff: protocol ip prio 50 u32 match ip src 0.0.0.0/0 police rate {speed} burst 12k drop flowid :1
-''')
+""")
+        # ip_link.append(f'''ip link set down dev {interface}''')
         # print('\n'.join(htb_script))
-    with open(f'{wdir}/htb.init', 'w') as f:
-        f.write('\n'.join(htb_script))
+        # 08.02.22
+    # with open(f'{wdir_systemd}/htb.init.new', 'w') as f:
+    #     f.write('\n'.join(htb_script))
+    # with open(f'{wdir_systemd}/ip_link.conf', 'w') as f:
+    #     f.write('\n'.join(ip_link))
     return
 
 def search_ip():
@@ -173,7 +179,6 @@ def creating_config():
                     '[Network]',
                     'Description="from old puma"',
                     'DHCPServer=yes',
-                    'IPForward=yes',
                     '\n',
                     '[DHCPServer]',
                     'DefaultLeaseTimeSec=1200',
@@ -201,7 +206,8 @@ def creating_config():
                     vlan_id_raw = re.match(r'eth0.(\d+)$', k)
                     vlan_id = vlan_id_raw.group(1)
                     conf_netdev.append(f'[VLAN]\nId={vlan_id}')
-
+                    ip_link.append(f'''networkctl down {k}''')
+                    
                 elif re.match(r'eth0.\d+.(\d+)', k):
 
                     name_if = f'12-{k}'
@@ -209,24 +215,28 @@ def creating_config():
                     vlan_id = vlan_id_raw.group(2)
                     conf_netdev.append(f'[NetDev]\nName={k}\nKind=vlan\n')
                     conf_netdev.append(f'[VLAN]\nId={vlan_id}')
-
+                    ip_link.append(f'''networkctl down {k}''')
             elif re.match(r'\S+./\S+', k):
                 conf.append(f'[Route]\nDestination={k}\n')
                 
             elif re.match(r'\d+.\d+.\d+.\d+', k):
                 conf.insert(4,f'Address={k}/24')
-                conf.insert(13,f'DNS={k}')
+                conf.insert(6,f'DNS={k}')
                 # print(k)
             elif re.match(r'\d+[k|M]bit', k):
                 name_if = k
                 match_speed = re.search(r'(\d+)([k|M]bit)', k).group()            
                 speed = match_speed.strip('bit').upper()
-                conf.append(f'[CAKE]\nBandwidth={speed}\n')
+                print(speed)
+                # conf.append(f'[CAKE]\nBandwidth={speed}\n')
                 
         with open(f'{wdir_systemd}/{name_if}.network', 'w') as f:
             f.write('\n'.join(conf))
         with open(f'{wdir_systemd}/{name_if}.netdev', 'w') as f:
             f.write('\n'.join(conf_netdev))
+        with open(f'{wdir_systemd}/ip_link.conf', 'w') as f:
+            f.write('\n'.join(ip_link))
+
         #print('\n'.join(conf))
     
     #print('\n'.join(sorted(vlans,key=len)))
