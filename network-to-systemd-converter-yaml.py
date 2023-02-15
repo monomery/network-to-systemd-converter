@@ -40,7 +40,7 @@ def search_speed():
     raw_tc_list = []
     raw_speed_list = []
     temp_list = []
-    htb_script = []
+    htb_script_list = []
     # speed_list = []
     with open(htb_init_dir) as htb_init_file:
         for i in htb_init_file:
@@ -53,6 +53,7 @@ def search_speed():
                 # print(raw_speed_list)
     for i in raw_speed_list:
         temp_list = []
+        
         speed = i[1]
         interface = i[0]
         temp_list.append(interface)
@@ -65,10 +66,12 @@ tc filter add dev {interface} parent ffff: protocol ip prio 50 u32 match ip src 
         # ip_link.append(f'''ip link set down dev {interface}''')
         # print('\n'.join(htb_script))
         # 08.02.22
-        with open(f'{wdir_systemd}/tc-rules/{interface}.tc', 'w') as f:
-            f.write(htb_script)
+        htb_script_list.append(htb_script)
+    with open(f'{wdir_systemd}/tc-rules/tc.cache', 'w') as f:
+        f.write('\n'.join(htb_script_list))
     # with open(f'{wdir_systemd}/ip_link.conf', 'w') as f:
-    #     f.write('\n'.join(ip_link))
+    #     f.write(''.join(ip_link))
+    print(speed_list)
     return
 
 def search_ip():
@@ -237,7 +240,7 @@ def creating_config():
                 routes_section.append(k)
             elif re.match(r'\d+.\d+.\d+.\d+', k):      #ищем ip-адреса         
                 address_section.append(f'{k}/24')
-                dhcp_section = [{'serveraddress': k}, {'router': k}, {'ntp': k}, {'dns': k}, {'dns': '172.121.121.11'}]
+                dhcp_section = [{'serveraddress': k}, {'router': k}, {'ntp': k}, {'dns': k}, {'dns': '91.221.103.254'}]
                 # print(address_dict)
                 # print(k)
             elif re.match(r'\d+[k|M]bit', k): #ищем скорость
